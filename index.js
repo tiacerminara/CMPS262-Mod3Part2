@@ -19,17 +19,32 @@ app.get('/test', async (req, res) => {
 
 // GET route for /api/v1/products with optional filtering
 app.get('/api/v1/products', async (req, res) => {
-  const { type } = req.query;
+  const { category, maxPrice } = req.query;  // Capture 'category' and 'maxPrice' query parameters
 
   try {
-    let result;
+    let baseQuery = 'SELECT * FROM products';  // Default query
+    const conditions = [];
+    const values = [];
 
-    if (type) {
-      result = await pool.query('SELECT * FROM products WHERE type = $1', [type]);
-    } else {
-      result = await pool.query('SELECT * FROM products');
+    // If category filter is provided
+    if (category) {
+      values.push(category);
+      conditions.push(`category = $${values.length}`);
     }
 
+    // If maxPrice filter is provided
+    if (maxPrice) {
+      values.push(maxPrice);
+      conditions.push(`price <= $${values.length}`);
+    }
+
+    // Append filters to query if present
+    if (conditions.length > 0) {
+      baseQuery += ' WHERE ' + conditions.join(' AND ');
+    }
+
+    // Execute the query
+    const result = await pool.query(baseQuery, values);
     res.json(result.rows);
   } catch (err) {
     console.error('Error fetching products:', err.message);
